@@ -1,0 +1,36 @@
+{
+  "id": "kino-plugin-juanskip",
+  "name": "JuanSkip",
+  "version": "1.0.0",
+  "apiVersion": 7,
+  "entry": "plugin.js",
+  "description": "Salta intros, créditos y recaps automáticamente en series, películas y anime con AniSkip y TheIntroDB.",
+  "author": "JuanDEVYT",
+  "homepage": "https://github.com/JuanDEVYT/kino-plugin-juanskip",
+  "color": "#8B5CF6",
+  "icon": "icon.png",
+  "discoverable": true,
+  "categories": ["anime", "series", "movies", "utilities"],
+  "capabilities": ["segments"],
+  "hosts": [
+    "api.aniskip.com",
+    "api.theintrodb.org",
+    "graphql.anilist.co"
+  ],
+  "settings": [
+    {
+      "key": "enable_theintrodb",
+      "type": "toggle",
+      "label": "TheIntroDB (Series y Películas)",
+      "hint": "Buscar intros y créditos en la base comunitaria TheIntroDB",
+      "default": true
+    },
+    {
+      "key": "enable_aniskip",
+      "type": "toggle",
+      "label": "AniSkip (Anime)",
+      "hint": "Buscar openings y endings en AniSkip para anime",
+      "default": true
+    }
+  ]
+}
