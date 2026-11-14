@@ -150,7 +150,10 @@ async function fetchAniSkip(params) {
     if (item.skipType === "op" || item.skipType === "mixed-op") {
       type = "intro";
     } else if (item.skipType === "ed" || item.skipType === "mixed-ed") {
-      type = "outro";
+      // Un outro realista debe estar en la segunda mitad del episodio o al menos tras 3 minutos
+      if (startMs > 180000 || (durationMs && startMs > durationMs * 0.4)) {
+        type = "outro";
+      }
     } else if (item.skipType === "recap") {
       type = "recap";
     }
@@ -163,7 +166,7 @@ async function fetchAniSkip(params) {
   return segments;
 }
 
-// Normalización y eliminación de segmentos duplicados/solapados
+// Normalización, unificación de recaps con intros y eliminación de solapamientos
 function cleanSegments(list, durationMs) {
   const validTypes = ["intro", "outro", "recap", "credits", "preview"];
   const whole = (v) => typeof v === "number" && Number.isInteger(v);
@@ -184,6 +187,27 @@ function cleanSegments(list, durationMs) {
 
     if (end - seg.startMs < 1000) continue;
     valid.push({ type: seg.type, startMs: seg.startMs, endMs: end });
+  }
+
+  // Soporte para saltar resumen/recap ("Previamente en..."):
+  // Como Kino solo activa el botón "Saltar intro" para segments de tipo "intro",
+  // si el episodio tiene un recap al inicio:
+  const intros = valid.filter((s) => s.type === "intro");
+  const earlyRecap = valid.find(
+    (s) => s.type === "recap" && s.startMs < 180000 && s.endMs > s.startMs
+  );
+
+  if (earlyRecap) {
+    if (intros.length === 0) {
+      // Si la serie no tiene intro registrada pero sí recap, promoverlo a intro para activar el botón
+      valid.push({ type: "intro", startMs: earlyRecap.startMs, endMs: earlyRecap.endMs });
+    } else {
+      // Si la intro empieza justo al terminar el recap (o casi contigua), expandir la intro
+      const firstIntro = intros.sort((a, b) => a.startMs - b.startMs)[0];
+      if (firstIntro.startMs >= earlyRecap.startMs && firstIntro.startMs <= earlyRecap.endMs + 5000) {
+        firstIntro.startMs = earlyRecap.startMs;
+      }
+    }
   }
 
   // Ordenar cronológicamente por inicio
@@ -216,11 +240,23 @@ export async function segments(query) {
   const tvdbId = queryIds.tvdb || showIds.tvdb;
   const malId = queryIds.mal || showIds.mal;
   const anilistId = queryIds.anilist || showIds.anilist;
-  const showTitle = query.show?.title || query.title || null;
+  let showTitle = query.show?.title || query.title || null;
   const durationMs = query.durationMs && Number.isInteger(query.durationMs) && query.durationMs > 0 ? query.durationMs : null;
 
   const season = typeof query.season === "number" ? query.season : null;
   const episode = typeof query.episode === "number" ? query.episode : null;
+
+  // Si no tenemos título pero sí TMDB ID y es una serie, consultar kino.tmdb para facilitar la búsqueda en AniSkip
+  if (!showTitle && !malId && !anilistId && tmdbId && isEpisode) {
+    if (typeof kino !== "undefined" && kino && typeof kino.tmdb === "function") {
+      try {
+        const tmdbData = await kino.tmdb("/tv/" + encodeURIComponent(tmdbId));
+        if (tmdbData && (tmdbData.original_name || tmdbData.name)) {
+          showTitle = tmdbData.original_name || tmdbData.name;
+        }
+      } catch (_) {}
+    }
+  }
 
   const enableTheIntroDB = isEnabled("enable_theintrodb", true);
   const enableAniSkip = isEnabled("enable_aniskip", true);

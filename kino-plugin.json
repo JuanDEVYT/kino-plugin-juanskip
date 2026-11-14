@@ -1,7 +1,7 @@
 {
   "id": "kino-plugin-juanskip",
   "name": "JuanSkip",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "apiVersion": 7,
   "entry": "plugin.js",
   "description": "Salta intros, créditos y recaps automáticamente en series, películas y anime con AniSkip y TheIntroDB.",
